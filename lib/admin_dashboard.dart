@@ -41,7 +41,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // نکته روزانه
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -73,7 +72,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   _buildCard(Icons.calculate, 'سود مرکب', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CompoundScreen()))),
                   _buildCard(Icons.history_edu, 'بک‌تست‌ها', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BacktestsScreen()))),
                   _buildCard(Icons.visibility, 'واچ‌لیست', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchlistScreen()))),
-                  _buildCard(Icons.account_balance, 'حساب‌های من', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
+                  _buildCard(Icons.settings, 'تنظیمات', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
                 ],
               ),
             ],
