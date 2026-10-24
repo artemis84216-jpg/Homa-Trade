@@ -69,7 +69,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 mainAxisSpacing: 16,
                 children: [
                   _buildCard(Icons.menu_book, 'اصطلاحات ترید', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()))),
-                  _buildCard(Icons.strategy, 'استراتژی‌ها', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StrategiesScreen()))),
+                  _buildCard(Icons.auto_graph, 'استراتژی‌ها', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StrategiesScreen()))),
                   _buildCard(Icons.calculate, 'سود مرکب', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CompoundScreen()))),
                   _buildCard(Icons.history_edu, 'بک‌تست‌ها', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BacktestsScreen()))),
                   _buildCard(Icons.visibility, 'واچ‌لیست', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WatchlistScreen()))),
