@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_screen.dart';
 import 'terms_screen.dart';
 import 'strategies_screen.dart';
@@ -16,11 +17,16 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   String _dailyTip = '';
+  String _todayDate = '';
 
   @override
   void initState() {
     super.initState();
     _dailyTip = getRandomDailyTip();
+    final now = Jalali.now();
+    const weekDays = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه', 'یکشنبه'];
+    const monthNames = ['', 'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+    _todayDate = '${weekDays[now.weekDay - 1]} ${toPersianDigits(now.day.toString())} ${monthNames[now.month]} ${toPersianDigits(now.year.toString())}';
   }
 
   @override
@@ -41,6 +47,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // تاریخ امروز
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBlack,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.gold, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, color: AppTheme.gold, size: 20),
+                    const SizedBox(width: 12),
+                    Text(_todayDate, style: const TextStyle(color: AppTheme.textWhite, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // نکته روزانه
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
