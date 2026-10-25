@@ -29,7 +29,11 @@ class DeveloperPanelScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 const Text('پنل توسعه‌دهنده', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.gold)),
                 const SizedBox(height: 16),
-                const Text('Homa_Trade\nنسخه ۱.۰.۰\n\nتوسعه‌دهنده: حسین\nگروه نرم‌افزاری هما', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textWhite, fontSize: 14, height: 1.6)),
+                const Text(
+                  'Homa_Trade\nنسخه ۱.۰.۰\n\nتوسعه‌دهنده: حسین معصومی\nگروه نرم‌افزاری هما',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppTheme.textWhite, fontSize: 14, height: 1.6),
+                ),
               ],
             ),
           ),
