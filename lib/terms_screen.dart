@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'database_helper.dart';
 import 'app_utils.dart';
+import 'image_helper.dart';
 
 class TermsScreen extends StatefulWidget {
   const TermsScreen({super.key});
@@ -61,6 +61,7 @@ class _TermsScreenState extends State<TermsScreen> {
     final descController = TextEditingController(text: term?['description']?.toString() ?? '');
     final categoryController = TextEditingController(text: term?['category']?.toString() ?? '');
     String? imagePathsJson = term?['image_path'];
+    List<String> currentImages = parseImagesHelper(imagePathsJson);
 
     await showDialog(
       context: context,
@@ -68,8 +69,6 @@ class _TermsScreenState extends State<TermsScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = parseImages(imagePathsJson);
-            
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
               title: Text(isEdit ? 'ویرایش اصطلاح' : 'افزودن اصطلاح جدید', style: const TextStyle(color: AppTheme.gold)),
@@ -87,7 +86,8 @@ class _TermsScreenState extends State<TermsScreen> {
                       onPressed: () async {
                         final List<XFile>? images = await _picker.pickMultiImage();
                         if (images != null && images.isNotEmpty) {
-                          setStateDialog(() => currentImages = images.map((e) => e.path).toList());
+                          final saved = await savePickedImages(images);
+                          setStateDialog(() => currentImages = saved);
                         }
                       },
                       icon: const Icon(Icons.image, color: AppTheme.gold),
@@ -123,7 +123,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       'name': nameController.text.trim(),
                       'category': categoryController.text.trim(),
                       'description': descController.text.trim(),
-                      'image_path': currentImages.isNotEmpty ? jsonEncode(currentImages) : null,
+                      'image_path': currentImages.isNotEmpty ? currentImages.join('|') : null,
                       'created_at': getCurrentJalaliDateTime(),
                     };
                     if (isEdit) {
@@ -184,7 +184,8 @@ class _TermsScreenState extends State<TermsScreen> {
               itemCount: _filteredTerms.length,
               itemBuilder: (context, index) {
                 final t = _filteredTerms[index];
-                final List<String> images = parseImages(t['image_path']);
+                final List<String> images = parseImagesHelper(t['image_path']);
+                
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
@@ -201,7 +202,7 @@ class _TermsScreenState extends State<TermsScreen> {
                         if ((t['category'] ?? '').isNotEmpty) Text('دسته‌بندی: ${t['category']}', style: const TextStyle(color: AppTheme.gold, fontSize: 12)),
                         const SizedBox(height: 4),
                         Text(t['description'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textGrey)),
-                        if (images.length > 1) Text('و ${images.length - 1} عکس دیگر', style: const TextStyle(color: AppTheme.textGrey, fontSize: 11, fontStyle: FontStyle.italic)),
+                        if (images.length > 1) Text('و ${toPersianDigits((images.length - 1).toString())} عکس دیگر', style: const TextStyle(color: AppTheme.textGrey, fontSize: 11, fontStyle: FontStyle.italic)),
                       ],
                     ),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
