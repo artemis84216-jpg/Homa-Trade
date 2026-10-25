@@ -49,9 +49,9 @@ class _CompoundScreenState extends State<CompoundScreen> {
               children: [
                 TextField(controller: nameController, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'نام برنامه', prefixIcon: Icon(Icons.title, color: AppTheme.gold))),
                 const SizedBox(height: 12),
-                TextField(controller: capitalController, keyboardType: TextInputType.number, inputFormatters: [CommaSeparatorFormatter()], style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'سرمایه اولیه (تومان)', prefixIcon: Icon(Icons.account_balance_wallet, color: AppTheme.gold))),
+                TextField(controller: capitalController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'سرمایه اولیه (تتر / USDT)', prefixIcon: Icon(Icons.account_balance_wallet, color: AppTheme.gold))),
                 const SizedBox(height: 12),
-                TextField(controller: percentController, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'درصد سود روزانه هدف', prefixIcon: Icon(Icons.percent, color: AppTheme.gold))),
+                TextField(controller: percentController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'درصد سود روزانه هدف', prefixIcon: Icon(Icons.percent, color: AppTheme.gold))),
                 const SizedBox(height: 12),
                 TextField(controller: daysController, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'تعداد کل روزها', prefixIcon: Icon(Icons.calendar_today, color: AppTheme.gold))),
               ],
@@ -176,7 +176,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
                         child: Icon(isAchieved ? Icons.check : Icons.circle_outlined, color: isAchieved ? AppTheme.green : AppTheme.textGrey),
                       ),
                       title: Text('روز ${toPersianDigits(d['day_number'].toString())}', style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
-                      subtitle: Text('هدف: ${formatPrice(d['target_amount'].toInt())} تومان', style: const TextStyle(color: AppTheme.textGrey)),
+                      subtitle: Text('هدف: ${d['target_amount'].toStringAsFixed(2)} تتر', style: const TextStyle(color: AppTheme.textGrey)),
                       trailing: Checkbox(
                         value: isAchieved,
                         activeColor: AppTheme.green,
@@ -204,7 +204,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundBlack,
-      appBar: AppBar(title: const Text('سود مرکب'), centerTitle: true),
+      appBar: AppBar(title: const Text('سود مرکب (تتر)'), centerTitle: true),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.gold))
           : _plans.isEmpty
@@ -228,7 +228,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
                       child: ListTile(
                         leading: CircleAvatar(backgroundColor: AppTheme.gold.withOpacity(0.2), child: const Icon(Icons.trending_up, color: AppTheme.gold)),
                         title: Text(p['name'], style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
-                        subtitle: Text('سرمایه: ${formatPrice(p['initial_capital'].toInt())} | سود روزانه: ${p['daily_target_percent']}٪\nتعداد روز: ${toPersianDigits(p['total_days'].toString())}', style: const TextStyle(color: AppTheme.textGrey)),
+                        subtitle: Text('سرمایه: ${p['initial_capital']} تتر | سود روزانه: ${p['daily_target_percent']}٪\nتعداد روز: ${toPersianDigits(p['total_days'].toString())}', style: const TextStyle(color: AppTheme.textGrey)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
