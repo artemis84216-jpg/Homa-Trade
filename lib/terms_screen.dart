@@ -68,8 +68,7 @@ class _TermsScreenState extends State<TermsScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = [];
-            try { currentImages = imagePathsJson != null ? jsonDecode(imagePathsJson) : []; } catch(e) {}
+            List<String> currentImages = parseImages(imagePathsJson);
             
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
@@ -185,9 +184,7 @@ class _TermsScreenState extends State<TermsScreen> {
               itemCount: _filteredTerms.length,
               itemBuilder: (context, index) {
                 final t = _filteredTerms[index];
-                List<String> images = [];
-                try { images = t['image_path'] != null ? jsonDecode(t['image_path']) : []; } catch(e) {}
-                
+                final List<String> images = parseImages(t['image_path']);
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
