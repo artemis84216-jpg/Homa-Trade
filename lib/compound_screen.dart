@@ -74,23 +74,23 @@ class _CompoundScreenState extends State<CompoundScreen> {
                   'created_at': getCurrentJalaliDateTime(),
                 };
 
+                int planId;
                 if (isEdit) {
-                  await DatabaseHelper.instance.updateCompoundPlan(plan!['id'], planData);
-                  // پاک کردن روزهای قبلی برای بازسازی
-                  final oldDays = await DatabaseHelper.instance.getCompoundDaysByPlan(plan!['id']);
-                  for (var d in oldDays) await DatabaseHelper.instance.deleteCompoundDay(d['id']);
+                  planId = plan!['id'];
+                  await DatabaseHelper.instance.updateCompoundPlan(planId, planData);
+                  final oldDays = await DatabaseHelper.instance.getCompoundDaysByPlan(planId);
+                  for (var d in oldDays) {
+                    await DatabaseHelper.instance.deleteCompoundDay(d['id']);
+                  }
                 } else {
-                  final newId = await DatabaseHelper.instance.insertCompoundPlan(planData);
-                  planData['id'] = newId;
+                  planId = await DatabaseHelper.instance.insertCompoundPlan(planData);
                 }
 
-                // ساخت روزهای هدف
-                final targetPlan = isEdit ? planData : {'id': planData['id'], ...planData};
-                double currentTarget = targetPlan['initial_capital'];
-                for (int i = 1; i <= targetPlan['total_days']; i++) {
-                  currentTarget = currentTarget * (1 + (targetPlan['daily_target_percent'] / 100));
+                double currentTarget = capital;
+                for (int i = 1; i <= days; i++) {
+                  currentTarget = currentTarget * (1 + (percent / 100));
                   await DatabaseHelper.instance.insertCompoundDay({
-                    'plan_id': targetPlan['id'],
+                    'plan_id': planId,
                     'day_number': i,
                     'target_amount': currentTarget,
                     'achieved': 0,
@@ -129,7 +129,9 @@ class _CompoundScreenState extends State<CompoundScreen> {
     );
     if (confirm == true) {
       final days = await DatabaseHelper.instance.getCompoundDaysByPlan(id);
-      for (var d in days) await DatabaseHelper.instance.deleteCompoundDay(d['id']);
+      for (var d in days) {
+        await DatabaseHelper.instance.deleteCompoundDay(d['id']);
+      }
       await DatabaseHelper.instance.deleteCompoundPlan(id);
       _loadPlans();
     }
@@ -151,4 +153,101 @@ class _CompoundScreenState extends State<CompoundScreen> {
           builder: (_, controller) => Column(
             children: [
               Padding(
-                padding: const
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(plan['name'], style: const TextStyle(color: AppTheme.gold, fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(icon: const Icon(Icons.close, color: AppTheme.textGrey), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+              ),
+              const Divider(color: AppTheme.gold),
+              Expanded(
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: days.length,
+                  itemBuilder: (context, index) {
+                    final d = days[index];
+                    final isAchieved = d['achieved'] == 1;
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isAchieved ? AppTheme.green.withOpacity(0.2) : AppTheme.textGrey.withOpacity(0.2),
+                        child: Icon(isAchieved ? Icons.check : Icons.circle_outlined, color: isAchieved ? AppTheme.green : AppTheme.textGrey),
+                      ),
+                      title: Text('روز ${toPersianDigits(d['day_number'].toString())}', style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
+                      subtitle: Text('هدف: ${formatPrice(d['target_amount'].toInt())} تومان', style: const TextStyle(color: AppTheme.textGrey)),
+                      trailing: Checkbox(
+                        value: isAchieved,
+                        activeColor: AppTheme.green,
+                        onChanged: (val) async {
+                          await DatabaseHelper.instance.updateCompoundDay(d['id'], {
+                            'achieved': val == true ? 1 : 0,
+                            'date': val == true ? getCurrentJalaliDate() : '',
+                          });
+                          Navigator.pop(ctx);
+                          _viewPlanDetails(plan);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundBlack,
+      appBar: AppBar(title: const Text('سود مرکب'), centerTitle: true),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.gold))
+          : _plans.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.calculate, size: 80, color: AppTheme.textGrey),
+                      const SizedBox(height: 16),
+                      const Text('برنامه‌ای تعریف نشده است', style: TextStyle(fontSize: 18, color: AppTheme.textGrey)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _plans.length,
+                  itemBuilder: (context, index) {
+                    final p = _plans[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: CircleAvatar(backgroundColor: AppTheme.gold.withOpacity(0.2), child: const Icon(Icons.trending_up, color: AppTheme.gold)),
+                        title: Text(p['name'], style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
+                        subtitle: Text('سرمایه: ${formatPrice(p['initial_capital'].toInt())} | سود روزانه: ${p['daily_target_percent']}٪\nتعداد روز: ${toPersianDigits(p['total_days'].toString())}', style: const TextStyle(color: AppTheme.textGrey)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(icon: const Icon(Icons.visibility, color: AppTheme.gold), onPressed: () => _viewPlanDetails(p)),
+                            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deletePlan(p['id'])),
+                          ],
+                        ),
+                        onTap: () => _viewPlanDetails(p),
+                      ),
+                    );
+                  },
+                ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showPlanDialog(),
+        backgroundColor: AppTheme.gold,
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add),
+        label: const Text('برنامه جدید'),
+      ),
+    );
+  }
+}
