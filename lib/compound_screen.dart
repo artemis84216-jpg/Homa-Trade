@@ -6,7 +6,6 @@ import 'app_utils.dart';
 
 class CompoundScreen extends StatefulWidget {
   const CompoundScreen({super.key});
-
   @override
   State<CompoundScreen> createState() => _CompoundScreenState();
 }
@@ -27,12 +26,13 @@ class _CompoundScreenState extends State<CompoundScreen> {
   Future<void> _showPlanDialog({Map<String, dynamic>? plan}) async {
     final isEdit = plan != null;
     final nameController = TextEditingController(text: plan?['name']?.toString() ?? '');
-    final capitalController = TextEditingController(text: (plan?['initial_capital'] ?? 0).toString());
-    final percentController = TextEditingController(text: (plan?['daily_target_percent'] ?? 0).toString());
+    // اصلاح: تبدیل اعداد به فرمت قابل نمایش برای کاربر
+    final capitalController = TextEditingController(text: (plan?['initial_capital'] ?? 0).toDouble().toStringAsFixed(2));
+    final percentController = TextEditingController(text: (plan?['daily_target_percent'] ?? 0).toDouble().toStringAsFixed(2));
     final daysController = TextEditingController(text: (plan?['total_days'] ?? 30).toString());
     final notesController = TextEditingController(text: plan?['notes']?.toString() ?? '');
     
-    Jalali startDate = plan?['start_date'] != null ? _parseJalali(plan!['start_date'])! : Jalali.now();
+    Jalali startDate = plan?['start_date'] != null ? (_parseJalali(plan!['start_date']) ?? Jalali.now()) : Jalali.now();
 
     await showDialog(
       context: context,
@@ -73,9 +73,10 @@ class _CompoundScreenState extends State<CompoundScreen> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.gold, foregroundColor: Colors.black),
                 onPressed: () async {
-                  final capital = double.tryParse(capitalController.text.replaceAll(',', '')) ?? 0;
-                  final percent = double.tryParse(percentController.text) ?? 0;
-                  final days = int.tryParse(daysController.text) ?? 30;
+                  // اصلاح: تبدیل اعداد فارسی به انگلیسی قبل از parse
+                  final capital = double.tryParse(toEnglishDigits(capitalController.text.replaceAll(',', ''))) ?? 0;
+                  final percent = double.tryParse(toEnglishDigits(percentController.text.replaceAll(',', ''))) ?? 0;
+                  final days = int.tryParse(toEnglishDigits(daysController.text.replaceAll(',', ''))) ?? 30;
 
                   final planData = {
                     'name': nameController.text.trim(),
@@ -97,9 +98,10 @@ class _CompoundScreenState extends State<CompoundScreen> {
                     planId = await DatabaseHelper.instance.insertCompoundPlan(planData);
                   }
 
+                  // اصلاح: محاسبه صحیح سود مرکب
                   double currentTarget = capital;
                   for (int i = 1; i <= days; i++) {
-                    currentTarget = currentTarget * (1 + (percent / 100));
+                    currentTarget = currentTarget + (currentTarget * percent / 100);
                     Jalali predDate = startDate.addDays(i - 1);
                     String predDateStr = '${predDate.year}/${predDate.month.toString().padLeft(2, '0')}/${predDate.day.toString().padLeft(2, '0')}';
                     
@@ -187,6 +189,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
                   itemBuilder: (context, index) {
                     final d = days[index];
                     final isAchieved = d['achieved'] == 1;
+                    final targetAmount = (d['target_amount'] ?? 0).toDouble();
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: isAchieved ? AppTheme.green.withOpacity(0.2) : AppTheme.textGrey.withOpacity(0.2),
@@ -196,9 +199,9 @@ class _CompoundScreenState extends State<CompoundScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('هدف: ${d['target_amount'].toStringAsFixed(2)} تتر', style: const TextStyle(color: AppTheme.textGrey)),
+                          Text('هدف: ${targetAmount.toStringAsFixed(2)} تتر', style: const TextStyle(color: AppTheme.textGrey)),
                           Text('🎯 پیش‌بینی: ${d['predicted_date'] ?? '-'}', style: const TextStyle(color: AppTheme.gold, fontSize: 11)),
-                          if (isAchieved && (d['achieved_date'] ?? '').isNotEmpty)
+                          if (isAchieved && (d['achieved_date'] ?? '').toString().isNotEmpty)
                             Text('✅ تحقق: ${d['achieved_date']}', style: const TextStyle(color: AppTheme.green, fontSize: 11, fontWeight: FontWeight.bold)),
                         ],
                       ),
@@ -240,16 +243,19 @@ class _CompoundScreenState extends State<CompoundScreen> {
                   itemCount: _plans.length,
                   itemBuilder: (context, index) {
                     final p = _plans[index];
+                    final capital = (p['initial_capital'] ?? 0).toDouble();
+                    final percent = (p['daily_target_percent'] ?? 0).toDouble();
+                    final totalDays = (p['total_days'] ?? 0).toInt();
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: CircleAvatar(backgroundColor: AppTheme.gold.withOpacity(0.2), child: const Icon(Icons.trending_up, color: AppTheme.gold)),
-                        title: Text(p['name'], style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
+                        title: Text(p['name'] ?? '', style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('سرمایه: ${p['initial_capital']} تتر | سود روزانه: ${p['daily_target_percent']}٪ | مدت: ${toPersianDigits(p['total_days'].toString())} روز', style: const TextStyle(color: AppTheme.textGrey)),
-                            Text('شروع از: ${p['start_date']}', style: const TextStyle(color: AppTheme.gold, fontSize: 12)),
+                            Text('سرمایه: ${capital.toStringAsFixed(2)} تتر | سود روزانه: ${percent.toStringAsFixed(2)}٪', style: const TextStyle(color: AppTheme.textGrey)),
+                            Text('مدت: ${toPersianDigits(totalDays.toString())} روز | شروع: ${p['start_date'] ?? '-'}', style: const TextStyle(color: AppTheme.gold, fontSize: 12)),
                           ],
                         ),
                         trailing: Row(
