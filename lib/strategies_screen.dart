@@ -64,7 +64,8 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = imagePathsJson != null ? jsonDecode(imagePathsJson) : [];
+            List<String> currentImages = [];
+            try { currentImages = imagePathsJson != null ? jsonDecode(imagePathsJson) : []; } catch(e) {}
             
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
@@ -109,7 +110,6 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
                         child: ClipRRect(borderRadius: BorderRadius.circular(8), child: SizedBox(width: 80, height: 80, child: Image.file(File(path), fit: BoxFit.cover))),
                       )).toList(),
                     ),
-                    const Text('برای بزرگنمایی روی عکس ضربه بزنید', style: TextStyle(color: AppTheme.textGrey, fontSize: 10)),
                   ]
                 ]),
               ),
@@ -169,7 +169,8 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
               itemCount: _filteredStrategies.length,
               itemBuilder: (context, index) {
                 final s = _filteredStrategies[index];
-                List<String> images = s['image_path'] != null ? jsonDecode(s['image_path']) : [];
+                List<String> images = [];
+                try { images = s['image_path'] != null ? jsonDecode(s['image_path']) : []; } catch(e) {}
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
