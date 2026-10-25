@@ -50,3 +50,192 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showStrategyDialog({Map<String, dynamic>? strategy}) async {
+    final isEdit = strategy != null;
+    final nameController = TextEditingController(text: strategy?['name']?.toString() ?? '');
+    final categoryController = TextEditingController(text: strategy?['category']?.toString() ?? '');
+    final descController = TextEditingController(text: strategy?['description']?.toString() ?? '');
+    final entryController = TextEditingController(text: strategy?['entry_conditions']?.toString() ?? '');
+    final exitController = TextEditingController(text: strategy?['exit_conditions']?.toString() ?? '');
+    final slController = TextEditingController(text: strategy?['stop_loss']?.toString() ?? '');
+    final tpController = TextEditingController(text: strategy?['take_profit']?.toString() ?? '');
+    final toolsController = TextEditingController(text: strategy?['tools']?.toString() ?? '');
+    String? imagePath = strategy?['image_path'];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: StatefulBuilder(
+          builder: (ctx, setStateDialog) => AlertDialog(
+            backgroundColor: AppTheme.cardBlack,
+            title: Text(isEdit ? 'ویرایش استراتژی' : 'افزودن استراتژی جدید', style: const TextStyle(color: AppTheme.gold)),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: nameController, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'نام استراتژی', prefixIcon: Icon(Icons.auto_graph, color: AppTheme.gold))),
+                const SizedBox(height: 12),
+                TextField(controller: categoryController, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'دسته‌بندی', prefixIcon: Icon(Icons.category, color: AppTheme.gold))),
+                const SizedBox(height: 12),
+                TextField(controller: descController, maxLines: 2, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'توضیحات کلی', prefixIcon: Icon(Icons.description, color: AppTheme.gold))),
+                const SizedBox(height: 12),
+                TextField(controller: entryController, maxLines: 2, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'شرایط ورود', prefixIcon: Icon(Icons.login, color: AppTheme.gold))),
+                const SizedBox(height: 12),
+                TextField(controller: exitController, maxLines: 2, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'شرایط خروج', prefixIcon: Icon(Icons.logout, color: AppTheme.gold))),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: TextField(controller: slController, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'حد ضرر (SL)', prefixIcon: Icon(Icons.stop, color: Colors.red)))),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: tpController, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'حد سود (TP)', prefixIcon: Icon(Icons.flag, color: Colors.green)))),
+                ]),
+                const SizedBox(height: 12),
+                TextField(controller: toolsController, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'ابزارها', prefixIcon: Icon(Icons.build, color: AppTheme.gold))),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) setStateDialog(() => imagePath = image.path);
+                  },
+                  icon: const Icon(Icons.image, color: AppTheme.gold),
+                  label: Text(imagePath != null ? 'تغییر عکس چارت' : 'انتخاب عکس چارت', style: const TextStyle(color: AppTheme.textWhite)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cardBlack, side: const BorderSide(color: AppTheme.gold)),
+                ),
+                if (imagePath != null) ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => _showFullScreenImage(ctx, imagePath!),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(width: double.infinity, height: 120, child: Image.file(File(imagePath!), fit: BoxFit.cover)),
+                    ),
+                  ),
+                  const Text('برای بزرگنمایی روی عکس ضربه بزنید', style: TextStyle(color: AppTheme.textGrey, fontSize: 10)),
+                ]
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('انصراف', style: TextStyle(color: AppTheme.textGrey))),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.gold, foregroundColor: Colors.black),
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('نام استراتژی الزامی است'), backgroundColor: Colors.red));
+                    return;
+                  }
+                  final strategyData = {
+                    'name': nameController.text.trim(), 'category': categoryController.text.trim(), 'description': descController.text.trim(),
+                    'entry_conditions': entryController.text.trim(), 'exit_conditions': exitController.text.trim(),
+                    'stop_loss': slController.text.trim(), 'take_profit': tpController.text.trim(), 'tools': toolsController.text.trim(),
+                    'image_path': imagePath, 'created_at': getCurrentJalaliDateTime(),
+                  };
+                  if (isEdit) { await DatabaseHelper.instance.updateStrategy(strategy!['id'], strategyData); } 
+                  else { await DatabaseHelper.instance.insertStrategy(strategyData); }
+                  Navigator.pop(ctx);
+                  _loadStrategies();
+                },
+                child: Text(isEdit ? 'ذخیره' : 'افزودن', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteStrategy(int id) async {
+    final confirm = await showDialog<bool>(context: context, builder: (ctx) => Directionality(textDirection: TextDirection.rtl, child: AlertDialog(backgroundColor: AppTheme.cardBlack, title: const Text('تایید حذف', style: TextStyle(color: AppTheme.gold)), content: const Text('آیا مطمئن هستید؟', style: TextStyle(color: AppTheme.textWhite)), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('انصراف')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: Colors.red)))])));
+    if (confirm == true) { await DatabaseHelper.instance.deleteStrategy(id); _loadStrategies(); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundBlack,
+      appBar: AppBar(title: const Text('استراتژی‌ها'), centerTitle: true, actions: [IconButton(icon: const Icon(Icons.refresh, color: AppTheme.gold), onPressed: _loadStrategies)]),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              controller: _searchController, style: const TextStyle(color: AppTheme.textWhite),
+              decoration: InputDecoration(hintText: 'جستجو در نام یا دسته‌بندی...', prefixIcon: const Icon(Icons.search, color: AppTheme.gold), suffixIcon: _searchController.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, color: AppTheme.gold), onPressed: () { _searchController.clear(); _filterStrategies(''); }) : null, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+              onChanged: _filterStrategies,
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppTheme.gold))
+                : _filteredStrategies.isEmpty
+                    ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.auto_graph, size: 80, color: AppTheme.textGrey), const SizedBox(height: 16), Text('استراتژی‌ای یافت نشد', style: TextStyle(fontSize: 18, color: AppTheme.textGrey))]))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _filteredStrategies.length,
+                        itemBuilder: (context, index) {
+                          final s = _filteredStrategies[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ExpansionTile(
+                              leading: s['image_path'] != null
+                                  ? GestureDetector(
+                                      onTap: () => _showFullScreenImage(context, s['image_path']!),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: SizedBox(width: 50, height: 50, child: Image.file(File(s['image_path']!), fit: BoxFit.cover)),
+                                      ),
+                                    )
+                                  : const CircleAvatar(backgroundColor: Color(0xFF2A2A2A), child: Icon(Icons.auto_graph, color: AppTheme.gold)),
+                              title: Text(s['name'] ?? '', style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
+                              subtitle: Text(s['category'] ?? '', style: const TextStyle(color: AppTheme.gold, fontSize: 12)),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if ((s['description'] ?? '').isNotEmpty) _infoRow('توضیحات', s['description']),
+                                      _infoRow('ورود', s['entry_conditions']),
+                                      _infoRow('خروج', s['exit_conditions']),
+                                      Row(children: [Expanded(child: _infoRow('حد ضرر', s['stop_loss'], color: Colors.red)), const SizedBox(width: 8), Expanded(child: _infoRow('حد سود', s['take_profit'], color: Colors.green))]),
+                                      _infoRow('ابزارها', s['tools']),
+                                      if (s['image_path'] != null) ...[
+                                        const SizedBox(height: 12),
+                                        GestureDetector(
+                                          onTap: () => _showFullScreenImage(context, s['image_path']!),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: SizedBox(width: double.infinity, height: 200, child: Image.file(File(s['image_path']!), fit: BoxFit.cover)),
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 12),
+                                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                                        IconButton(icon: const Icon(Icons.edit, color: AppTheme.gold), onPressed: () => _showStrategyDialog(strategy: s)),
+                                        IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteStrategy(s['id'])),
+                                      ]),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(onPressed: () => _showStrategyDialog(), backgroundColor: AppTheme.gold, foregroundColor: Colors.black, icon: const Icon(Icons.add), label: const Text('افزودن استراتژی')),
+    );
+  }
+
+  Widget _infoRow(String label, String? value, {Color color = AppTheme.textWhite}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('$label:', style: TextStyle(color: AppTheme.gold, fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 2),
+        Text(value ?? '-', style: TextStyle(color: color, fontSize: 13)),
+      ]),
+    );
+  }
+}
