@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'database_helper.dart';
 import 'app_utils.dart';
+import 'image_helper.dart';
 
 class BacktestsScreen extends StatefulWidget {
   const BacktestsScreen({super.key});
@@ -58,6 +58,7 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
     final notesController = TextEditingController(text: bt?['notes']?.toString() ?? '');
     String result = bt?['result']?.toString() ?? 'Win';
     String? imagePathsJson = bt?['image_path'];
+    List<String> currentImages = parseImagesHelper(imagePathsJson);
 
     await showDialog(
       context: context,
@@ -65,8 +66,6 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = parseImages(imagePathsJson);
-
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
               title: Text(isEdit ? 'ویرایش بک‌تست' : 'ثبت بک‌تست جدید', style: const TextStyle(color: AppTheme.gold)),
@@ -100,7 +99,8 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
                     onPressed: () async {
                       final List<XFile>? images = await _picker.pickMultiImage();
                       if (images != null && images.isNotEmpty) {
-                        setStateDialog(() => currentImages = images.map((e) => e.path).toList());
+                        final saved = await savePickedImages(images);
+                        setStateDialog(() => currentImages = saved);
                       }
                     },
                     icon: const Icon(Icons.image, color: AppTheme.gold),
@@ -128,7 +128,7 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
                       'strategy_name': strategyController.text.trim(), 'symbol': symbolController.text.trim(), 'timeframe': timeframeController.text.trim(),
                       'start_date': startDateController.text.trim(), 'end_date': endDateController.text.trim(), 'result': result,
                       'risk_reward': double.tryParse(rrController.text) ?? 0.0, 'emotion': emotionController.text.trim(), 'notes': notesController.text.trim(),
-                      'image_path': currentImages.isNotEmpty ? jsonEncode(currentImages) : null, 'created_at': getCurrentJalaliDateTime(),
+                      'image_path': currentImages.isNotEmpty ? currentImages.join('|') : null, 'created_at': getCurrentJalaliDateTime(),
                     };
                     if (isEdit) { await DatabaseHelper.instance.updateBacktest(bt!['id'], btData); } 
                     else { await DatabaseHelper.instance.insertBacktest(btData); }
@@ -174,7 +174,7 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
                 final isWin = b['result'] == 'Win';
                 final isLoss = b['result'] == 'Loss';
                 final resColor = isWin ? AppTheme.green : (isLoss ? AppTheme.red : AppTheme.textGrey);
-                final List<String> images = parseImages(b['image_path']);
+                final List<String> images = parseImagesHelper(b['image_path']);
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
