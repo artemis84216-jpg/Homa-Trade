@@ -64,8 +64,7 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = [];
-            try { currentImages = imagePathsJson != null ? jsonDecode(imagePathsJson) : []; } catch(e) {}
+            List<String> currentImages = parseImages(imagePathsJson);
             
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
@@ -169,8 +168,7 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
               itemCount: _filteredStrategies.length,
               itemBuilder: (context, index) {
                 final s = _filteredStrategies[index];
-                List<String> images = [];
-                try { images = s['image_path'] != null ? jsonDecode(s['image_path']) : []; } catch(e) {}
+                final List<String> images = parseImages(s['image_path']);
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
