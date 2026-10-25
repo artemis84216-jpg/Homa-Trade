@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'database_helper.dart';
 import 'app_utils.dart';
+import 'image_helper.dart';
 
 class StrategiesScreen extends StatefulWidget {
   const StrategiesScreen({super.key});
@@ -57,6 +57,7 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
     final tpController = TextEditingController(text: strategy?['take_profit']?.toString() ?? '');
     final toolsController = TextEditingController(text: strategy?['tools']?.toString() ?? '');
     String? imagePathsJson = strategy?['image_path'];
+    List<String> currentImages = parseImagesHelper(imagePathsJson);
 
     await showDialog(
       context: context,
@@ -64,8 +65,6 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = parseImages(imagePathsJson);
-            
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
               title: Text(isEdit ? 'ویرایش استراتژی' : 'افزودن استراتژی جدید', style: const TextStyle(color: AppTheme.gold)),
@@ -93,7 +92,8 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
                     onPressed: () async {
                       final List<XFile>? images = await _picker.pickMultiImage();
                       if (images != null && images.isNotEmpty) {
-                        setStateDialog(() => currentImages = images.map((e) => e.path).toList());
+                        final saved = await savePickedImages(images);
+                        setStateDialog(() => currentImages = saved);
                       }
                     },
                     icon: const Icon(Icons.image, color: AppTheme.gold),
@@ -125,7 +125,7 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
                       'name': nameController.text.trim(), 'category': categoryController.text.trim(), 'description': descController.text.trim(),
                       'entry_conditions': entryController.text.trim(), 'exit_conditions': exitController.text.trim(),
                       'stop_loss': slController.text.trim(), 'take_profit': tpController.text.trim(), 'tools': toolsController.text.trim(),
-                      'image_path': currentImages.isNotEmpty ? jsonEncode(currentImages) : null, 'created_at': getCurrentJalaliDateTime(),
+                      'image_path': currentImages.isNotEmpty ? currentImages.join('|') : null, 'created_at': getCurrentJalaliDateTime(),
                     };
                     if (isEdit) { await DatabaseHelper.instance.updateStrategy(strategy!['id'], strategyData); } 
                     else { await DatabaseHelper.instance.insertStrategy(strategyData); }
@@ -168,7 +168,7 @@ class _StrategiesScreenState extends State<StrategiesScreen> {
               itemCount: _filteredStrategies.length,
               itemBuilder: (context, index) {
                 final s = _filteredStrategies[index];
-                final List<String> images = parseImages(s['image_path']);
+                final List<String> images = parseImagesHelper(s['image_path']);
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
