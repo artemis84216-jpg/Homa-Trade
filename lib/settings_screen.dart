@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:sqflite/sqflite.dart';
 import 'dart:io';
 import 'database_helper.dart';
 import 'app_utils.dart';
@@ -19,6 +18,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _newPassController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
+  List<Map<String, dynamic>> _brokers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBrokers();
+  }
+
+  Future<void> _loadBrokers() async {
+    final data = await DatabaseHelper.instance.getAllBrokerAccounts();
+    setState(() => _brokers = data);
+  }
 
   Future<void> _changePassword() async {
     if (_currentPassController.text.isEmpty || _newPassController.text.isEmpty || _confirmPassController.text.isEmpty) {
@@ -66,13 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       
       await sourceFile.copy(backupPath);
-      
-      await Share.shareXFiles(
-        [XFile(backupPath)],
-        text: 'پشتیبان Homa_Trade - ${getCurrentJalaliDateTime()}',
-        subject: 'Homa Trade Backup',
-      );
-      
+      await Share.shareXFiles([XFile(backupPath)], text: 'پشتیبان Homa_Trade - ${getCurrentJalaliDateTime()}');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✓ فایل پشتیبان آماده اشتراک‌گذاری شد'), backgroundColor: Colors.green));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا در پشتیبان‌گیری: $e'), backgroundColor: Colors.red));
@@ -87,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: AlertDialog(
           backgroundColor: AppTheme.cardBlack,
           title: const Text('⚠️ هشدار جدی', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          content: const Text('این عمل تمام اطلاعات (اصطلاحات، استراتژی‌ها، بک‌تست‌ها و...) را برای همیشه پاک می‌کند. آیا مطمئن هستید؟', style: TextStyle(color: AppTheme.textWhite)),
+          content: const Text('این عمل تمام اطلاعات را برای همیشه پاک می‌کند. آیا مطمئن هستید؟', style: TextStyle(color: AppTheme.textWhite)),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('انصراف')),
             TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('بله، پاک کن', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
@@ -96,160 +101,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirm == true) {
-      await DatabaseHelper.instance.resetDatabase();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✓ دیتابیس پاک شد'), backgroundColor: Colors.green));
-    }
-  }
-
-  void _logout() {
-    showDialog(
-      context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: AppTheme.cardBlack,
-          title: const Text('خروج از برنامه', style: TextStyle(color: AppTheme.gold)),
-          content: const Text('آیا مطمئن هستید؟', style: TextStyle(color: AppTheme.textWhite)),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('انصراف')),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.of(context).pop();
-              },
-              child: const Text('بله', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundBlack,
-      appBar: AppBar(title: const Text('تنظیمات'), centerTitle: true),
-      body: Directionality(
-        textDirection: TextDirection.rtl,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // تغییر رمز
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(children: [Icon(Icons.lock, color: AppTheme.gold), SizedBox(width: 8), Text('تغییر رمز عبور', style: TextStyle(color: AppTheme.gold, fontWeight: FontWeight.bold))]),
-                      const SizedBox(height: 16),
-                      TextField(controller: _currentPassController, obscureText: true, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'رمز فعلی', prefixIcon: Icon(Icons.lock_outline, color: AppTheme.gold))),
-                      const SizedBox(height: 12),
-                      TextField(controller: _newPassController, obscureText: true, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'رمز جدید', prefixIcon: Icon(Icons.key, color: AppTheme.gold))),
-                      const SizedBox(height: 12),
-                      TextField(controller: _confirmPassController, obscureText: true, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'تکرار رمز جدید', prefixIcon: Icon(Icons.key, color: AppTheme.gold))),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 45,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.gold, foregroundColor: Colors.black),
-                          onPressed: _isLoading ? null : _changePassword,
-                          icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)) : const Icon(Icons.save),
-                          label: const Text('ذخیره رمز جدید', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // پشتیبان‌گیری
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(children: [Icon(Icons.cloud_upload, color: AppTheme.gold), SizedBox(width: 8), Text('پشتیبان‌گیری و بازیابی', style: TextStyle(color: AppTheme.gold, fontWeight: FontWeight.bold))]),
-                      const SizedBox(height: 12),
-                      const Text('از تمام اطلاعات خود (اصطلاحات، استراتژی‌ها، بک‌تست‌ها و...) نسخه پشتیبان تهیه کنید.', style: TextStyle(color: AppTheme.textGrey, fontSize: 13)),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.gold, foregroundColor: Colors.black),
-                          onPressed: _backupDatabase,
-                          icon: const Icon(Icons.download),
-                          label: const Text('دریافت فایل پشتیبان', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('💡 فایل پشتیبان را در تلگرام، ایمیل یا فضای ابری ذخیره کنید.', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // حذف اطلاعات
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(children: [Icon(Icons.delete_forever, color: Colors.red), SizedBox(width: 8), Text('حذف کامل اطلاعات', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))]),
-                      const SizedBox(height: 12),
-                      const Text('این عمل تمام اطلاعات را برای همیشه پاک می‌کند.', style: TextStyle(color: AppTheme.textGrey, fontSize: 13)),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                          onPressed: _resetDatabase,
-                          icon: const Icon(Icons.delete),
-                          label: const Text('حذف همه اطلاعات', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // خروج
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(children: [Icon(Icons.logout, color: Colors.red), SizedBox(width: 8), Text('خروج از حساب', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))]),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                          onPressed: _logout,
-                          icon: const Icon(Icons.exit_to_app),
-                          label: const Text('خروج', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+     
