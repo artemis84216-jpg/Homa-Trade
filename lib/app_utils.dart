@@ -116,3 +116,21 @@ String getRandomDailyTip() {
   final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
   return dailyTradingTips[dayOfYear % dailyTradingTips.length];
 }
+// تابع کمکی برای parse کردن عکس‌ها (سازگار با فرمت قدیمی و جدید)
+List<String> parseImages(dynamic value) {
+  if (value == null) return [];
+  if (value is List) return value.cast<String>();
+  if (value is String) {
+    if (value.isEmpty) return [];
+    // اگر با [ شروع شد، JSON آرایه است
+    if (value.trim().startsWith('[')) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) return decoded.cast<String>();
+      } catch (e) {}
+    }
+    // در غیر این صورت، یک مسیر تک است (فرمت قدیمی)
+    return [value];
+  }
+  return [];
+}
