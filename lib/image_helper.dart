@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
-// ذخیره دائمی عکس‌های انتخاب شده
 Future<List<String>> savePickedImages(List<XFile> picked) async {
   final docs = await getApplicationDocumentsDirectory();
   final dir = Directory('${docs.path}/trade_images');
@@ -14,25 +13,25 @@ Future<List<String>> savePickedImages(List<XFile> picked) async {
   List<String> savedPaths = [];
   for (int i = 0; i < picked.length; i++) {
     try {
-      final fileName =
-          'img_${DateTime.now().microsecondsSinceEpoch}_$i.jpg';
+      final fileName = 'img_${DateTime.now().microsecondsSinceEpoch}_$i.jpg';
       final target = File('${dir.path}/$fileName');
       await File(picked[i].path).copy(target.path);
       savedPaths.add(target.path);
     } catch (e) {
-      // اگر کپی موفق نبود، از مسیر اصلی استفاده می‌کنیم
       savedPaths.add(picked[i].path);
     }
   }
   return savedPaths;
 }
 
-// خواندن سازگار با فرمت قدیمی (تک عکس) و جدید (چند عکس)
 List<String> parseImagesHelper(dynamic value) {
   if (value == null) return [];
   if (value is List) return value.map((e) => e.toString()).toList();
   if (value is String) {
     if (value.trim().isEmpty) return [];
+    if (value.contains('|')) {
+      return value.split('|').where((e) => e.trim().isNotEmpty).toList();
+    }
     if (value.trim().startsWith('[')) {
       try {
         final decoded = jsonDecode(value);
