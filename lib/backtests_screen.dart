@@ -65,8 +65,7 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            List<String> currentImages = [];
-            try { currentImages = imagePathsJson != null ? jsonDecode(imagePathsJson) : []; } catch(e) {}
+            List<String> currentImages = parseImages(imagePathsJson);
 
             return AlertDialog(
               backgroundColor: AppTheme.cardBlack,
@@ -175,8 +174,7 @@ class _BacktestsScreenState extends State<BacktestsScreen> {
                 final isWin = b['result'] == 'Win';
                 final isLoss = b['result'] == 'Loss';
                 final resColor = isWin ? AppTheme.green : (isLoss ? AppTheme.red : AppTheme.textGrey);
-                List<String> images = [];
-                try { images = b['image_path'] != null ? jsonDecode(b['image_path']) : []; } catch(e) {}
+                final List<String> images = parseImages(b['image_path']);
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
