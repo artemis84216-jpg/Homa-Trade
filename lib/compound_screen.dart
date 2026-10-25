@@ -32,8 +32,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
     final daysController = TextEditingController(text: (plan?['total_days'] ?? 30).toString());
     final notesController = TextEditingController(text: plan?['notes']?.toString() ?? '');
     
-    Jalali? predictedDate = plan?['predicted_date'] != null ? _parseJalali(plan!['predicted_date']) : null;
-    Jalali? achievedDate = plan?['achieved_date'] != null ? _parseJalali(plan!['achieved_date']) : null;
+    Jalali startDate = plan?['start_date'] != null ? _parseJalali(plan!['start_date'])! : Jalali.now();
 
     await showDialog(
       context: context,
@@ -55,32 +54,14 @@ class _CompoundScreenState extends State<CompoundScreen> {
                   const SizedBox(height: 12),
                   TextField(controller: daysController, keyboardType: TextInputType.number, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'تعداد کل روزها', prefixIcon: Icon(Icons.calendar_today, color: AppTheme.gold))),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final picked = await showPersianDatePicker(context: ctx, initialDate: predictedDate ?? Jalali.now(), firstDate: Jalali(1400), lastDate: Jalali(1450));
-                            if (picked != null) setStateDialog(() => predictedDate = picked);
-                          },
-                          icon: const Icon(Icons.event, color: AppTheme.gold, size: 18),
-                          label: Text(predictedDate != null ? '${predictedDate!.year}/${predictedDate!.month}/${predictedDate!.day}' : 'پیش‌بینی هدف', style: const TextStyle(color: AppTheme.textWhite, fontSize: 12)),
-                          style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.gold), padding: const EdgeInsets.symmetric(vertical: 12)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final picked = await showPersianDatePicker(context: ctx, initialDate: achievedDate ?? Jalali.now(), firstDate: Jalali(1400), lastDate: Jalali(1450));
-                            if (picked != null) setStateDialog(() => achievedDate = picked);
-                          },
-                          icon: const Icon(Icons.check_circle, color: AppTheme.green, size: 18),
-                          label: Text(achievedDate != null ? '${achievedDate!.year}/${achievedDate!.month}/${achievedDate!.day}' : 'تحقق یافته', style: const TextStyle(color: AppTheme.textWhite, fontSize: 12)),
-                          style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.green), padding: const EdgeInsets.symmetric(vertical: 12)),
-                        ),
-                      ),
-                    ],
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showPersianDatePicker(context: ctx, initialDate: startDate, firstDate: Jalali(1400), lastDate: Jalali(1450));
+                      if (picked != null) setStateDialog(() => startDate = picked);
+                    },
+                    icon: const Icon(Icons.event, color: AppTheme.gold),
+                    label: Text('تاریخ شروع: ${startDate.year}/${startDate.month.toString().padLeft(2, '0')}/${startDate.day.toString().padLeft(2, '0')}', style: const TextStyle(color: AppTheme.textWhite)),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.gold)),
                   ),
                   const SizedBox(height: 12),
                   TextField(controller: notesController, maxLines: 2, style: const TextStyle(color: AppTheme.textWhite), decoration: const InputDecoration(labelText: 'یادداشت', prefixIcon: Icon(Icons.notes, color: AppTheme.gold))),
@@ -101,8 +82,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
                     'initial_capital': capital,
                     'daily_target_percent': percent,
                     'total_days': days,
-                    'predicted_date': predictedDate != null ? '${predictedDate!.year}/${predictedDate!.month.toString().padLeft(2, '0')}/${predictedDate!.day.toString().padLeft(2, '0')}' : '',
-                    'achieved_date': achievedDate != null ? '${achievedDate!.year}/${achievedDate!.month.toString().padLeft(2, '0')}/${achievedDate!.day.toString().padLeft(2, '0')}' : '',
+                    'start_date': '${startDate.year}/${startDate.month.toString().padLeft(2, '0')}/${startDate.day.toString().padLeft(2, '0')}',
                     'notes': notesController.text.trim(),
                     'created_at': getCurrentJalaliDateTime(),
                   };
@@ -120,9 +100,17 @@ class _CompoundScreenState extends State<CompoundScreen> {
                   double currentTarget = capital;
                   for (int i = 1; i <= days; i++) {
                     currentTarget = currentTarget * (1 + (percent / 100));
+                    Jalali predDate = startDate.addDays(i - 1);
+                    String predDateStr = '${predDate.year}/${predDate.month.toString().padLeft(2, '0')}/${predDate.day.toString().padLeft(2, '0')}';
+                    
                     await DatabaseHelper.instance.insertCompoundDay({
-                      'plan_id': planId, 'day_number': i, 'target_amount': currentTarget,
-                      'achieved': 0, 'actual_amount': 0, 'date': '', 'notes': '',
+                      'plan_id': planId,
+                      'day_number': i,
+                      'target_amount': currentTarget,
+                      'achieved': 0,
+                      'predicted_date': predDateStr,
+                      'achieved_date': '',
+                      'notes': '',
                     });
                   }
                   Navigator.pop(ctx);
@@ -141,9 +129,7 @@ class _CompoundScreenState extends State<CompoundScreen> {
     try {
       final parts = dateStr.split('/');
       return Jalali(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
   Future<void> _deletePlan(int id) async {
@@ -193,18 +179,6 @@ class _CompoundScreenState extends State<CompoundScreen> {
                   ],
                 ),
               ),
-              if ((plan['predicted_date'] ?? '').isNotEmpty || (plan['achieved_date'] ?? '').isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      if ((plan['predicted_date'] ?? '').isNotEmpty) 
-                        Expanded(child: Text('🎯 پیش‌بینی: ${plan['predicted_date']}', style: const TextStyle(color: AppTheme.textWhite, fontSize: 12))),
-                      if ((plan['achieved_date'] ?? '').isNotEmpty) 
-                        Expanded(child: Text('✅ تحقق: ${plan['achieved_date']}', style: const TextStyle(color: AppTheme.green, fontSize: 12, fontWeight: FontWeight.bold))),
-                    ],
-                  ),
-                ),
               const Divider(color: AppTheme.gold),
               Expanded(
                 child: ListView.builder(
@@ -219,14 +193,23 @@ class _CompoundScreenState extends State<CompoundScreen> {
                         child: Icon(isAchieved ? Icons.check : Icons.circle_outlined, color: isAchieved ? AppTheme.green : AppTheme.textGrey),
                       ),
                       title: Text('روز ${toPersianDigits(d['day_number'].toString())}', style: const TextStyle(color: AppTheme.textWhite, fontWeight: FontWeight.bold)),
-                      subtitle: Text('هدف: ${d['target_amount'].toStringAsFixed(2)} تتر', style: const TextStyle(color: AppTheme.textGrey)),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('هدف: ${d['target_amount'].toStringAsFixed(2)} تتر', style: const TextStyle(color: AppTheme.textGrey)),
+                          Text('🎯 پیش‌بینی: ${d['predicted_date'] ?? '-'}', style: const TextStyle(color: AppTheme.gold, fontSize: 11)),
+                          if (isAchieved && (d['achieved_date'] ?? '').isNotEmpty)
+                            Text('✅ تحقق: ${d['achieved_date']}', style: const TextStyle(color: AppTheme.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                       trailing: Checkbox(
                         value: isAchieved,
                         activeColor: AppTheme.green,
                         onChanged: (val) async {
+                          final achievedDateStr = val == true ? getCurrentJalaliDate() : '';
                           await DatabaseHelper.instance.updateCompoundDay(d['id'], {
                             'achieved': val == true ? 1 : 0,
-                            'date': val == true ? getCurrentJalaliDate() : '',
+                            'achieved_date': achievedDateStr,
                           });
                           Navigator.pop(ctx);
                           _viewPlanDetails(plan);
@@ -265,8 +248,8 @@ class _CompoundScreenState extends State<CompoundScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('سرمایه: ${p['initial_capital']} تتر | سود روزانه: ${p['daily_target_percent']}٪', style: const TextStyle(color: AppTheme.textGrey)),
-                            if ((p['achieved_date'] ?? '').isNotEmpty) Text('✅ تحقق یافته در: ${p['achieved_date']}', style: const TextStyle(color: AppTheme.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                            Text('سرمایه: ${p['initial_capital']} تتر | سود روزانه: ${p['daily_target_percent']}٪ | مدت: ${toPersianDigits(p['total_days'].toString())} روز', style: const TextStyle(color: AppTheme.textGrey)),
+                            Text('شروع از: ${p['start_date']}', style: const TextStyle(color: AppTheme.gold, fontSize: 12)),
                           ],
                         ),
                         trailing: Row(
